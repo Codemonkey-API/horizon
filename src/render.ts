@@ -1,59 +1,105 @@
 import { execFileSync } from "node:child_process";
-import { mkdirSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, mkdirSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+import { discoverDisplays } from "./displays.js";
+import { calculateLayout } from "./geometry.js";
 
-const source = join(
-  process.env.HOME ?? ".",
-  "Pictures/ubuntu-neon-logo-2560x1080-23495.jpg",
-);
+export function renderWallpaper(sourceArg: string, outputArg: string) {
+  const source = resolve(sourceArg);
+  const output = resolve(outputArg);
 
-const output = join(process.cwd(), "tmp/panorama-test-ts");
-mkdirSync(output, { recursive: true });
+  if (!existsSync(source)) {
+    throw new Error(`Wallpaper image not found: ${source}`);
+  }
 
-const displays = [
-  { name: "HDMI-A-1", x: 0, y: 0, width: 1920, height: 1080 },
-  { name: "HDMI-A-2", x: 1920, y: 0, width: 1920, height: 1080 },
-];
+  const metadata = execFileSync(
+    "identify",
+    ["-format", "%w %h", source],
+    { encoding: "utf8" },
+  ).trim();
 
-const minX = Math.min(...displays.map((d) => d.x));
-const minY = Math.min(...displays.map((d) => d.y));
-const maxX = Math.max(...displays.map((d) => d.x + d.width));
-const maxY = Math.max(...displays.map((d) => d.y + d.height));
+  const [widthText, heightText] = metadata.split(/\s+/);
+  const imageWidth = Number(widthText);
+  const imageHeight = Number(heightText);
 
-const canvasWidth = maxX - minX;
-const canvasHeight = maxY - minY;
-const preview = join(output, "panorama-preview.png");
+  if (
+    !Number.isSafeInteger(imageWidth) ||
+    !Number.isSafeInteger(imageHeight) ||
+    imageWidth <= 0 ||
+    imageHeight <= 0
+  ) {
+    throw new Error(`Could not determine valid image dimensions: ${source}`);
+  }
 
-// Create one shared canvas before splitting it.
-// This keeps both panels aligned to the same image composition.
-execFileSync("convert", [
-  source,
-  "-resize",
-  `${canvasWidth}x${canvasHeight}^`,
-  "-gravity",
-  "center",
-  "-extent",
-  `${canvasWidth}x${canvasHeight}`,
-  preview,
-]);
+  const displays = discoverDisplays();
 
-for (const display of displays) {
-  const x = display.x - minX;
-  const y = display.y - minY;
-  const destination = join(output, `${display.name}.png`);
+  const layout = calculateLayout(
+    { width: imageWidth, height: imageHeight },
+    displays,
+  );
+
+  const { width: canvasWidth, height: canvasHeight } = layout.canvas;
+
+  const preview = join(output, "panorama-preview.png");
+
+  mkdirSync(output, { recursive: true });
+
+  console.log(`Wallpaper: ${imageWidth}x${imageHeight}`);
+  console.log(`Enabled displays: ${displays.length}`);
+
+  for (const display of displays) {
+    console.log(
+      `  ${display.name}: ${display.width}x${display.height} at ${display.x},${display.y}`,
+    );
+  }
+
+  console.log(`Calculated canvas: ${canvasWidth}x${canvasHeight}`);
 
   execFileSync("convert", [
+    source,
+    "-auto-orient",
+    "-resize",
+    `${canvasWidth}x${canvasHeight}^`,
+    "-gravity",
+    "center",
+    "-extent",
+    `${canvasWidth}x${canvasHeight}`,
     preview,
-    "-crop",
-    `${display.width}x${display.height}+${x}+${y}`,
-    "+repage",
-    destination,
   ]);
 
-  console.log(
-    `${display.name}: ${display.width}x${display.height} -> ${destination}`,
-  );
+  for (const slice of layout.slices) {
+    const destination = join(output, `${slice.display}.png`);
+
+    execFileSync("convert", [
+      preview,
+      "-crop",
+      `${slice.width}x${slice.height}+${slice.x}+${slice.y}`,
+      "+repage",
+      destination,
+    ]);
+
+    console.log(`Rendered ${slice.display}: ${destination}`);
+  }
+
+  console.log("Horizon rendering complete 🌅");
+  console.log(`Output folder: ${output}`);
 }
 
-console.log(`\nPanorama: ${canvasWidth}x${canvasHeight}`);
-console.log(`Output folder: ${output}`);
+const invokedFile = process.argv[1]
+  ? pathToFileURL(resolve(process.argv[1])).href
+  : "";
+
+if (import.meta.url === invokedFile) {
+  const source =
+    process.argv[2] ??
+    join(
+      process.env.HOME ?? ".",
+      "Pictures/ubuntu-neon-logo-2560x1080-23495.jpg",
+    );
+
+  const output =
+    process.argv[3] ?? join(process.cwd(), "tmp/panorama-test-ts");
+
+  renderWallpaper(source, output);
+}

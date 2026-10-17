@@ -4,3 +4,8 @@ dist/
 *.log
 
 tmp/
+
+# Horizon desktop UI
+ui/node_modules/
+ui/dist/
+ui/.vite/
