@@ -357,3 +357,12 @@ Horizon is released under the MIT License. See [LICENSE](LICENSE) for the full l
 ## Contributing
 
 Contribution guidelines, issue reporting instructions and release procedures will be added as the project prepares for public distribution.
+## Screenshots
+
+### Amber interface and panoramic wallpaper
+
+![Horizon desktop with amber accent and panoramic wallpaper](assets/horizon-amber-showcase.webp)
+
+### Scenic wallpaper and transparent interface
+
+![Horizon desktop with scenic panoramic wallpaper](assets/horizon-scenic-showcase.webp)
