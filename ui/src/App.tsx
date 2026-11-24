@@ -76,6 +76,12 @@ function getGreeting(): string {
 
 function App() {
   const [theme, setTheme] = useState<'system' | 'dark' | 'light'>('system')
+  const [glassMode, setGlassMode] = useState<boolean>(() => {
+    return window.localStorage.getItem('horizon-glass-mode') === 'true'
+  })
+  const [profileThoughtOpen, setProfileThoughtOpen] = useState<boolean>(() => {
+    return window.localStorage.getItem('horizon-profile-thought-open') === 'true'
+  })
   const [accentCollapsed, setAccentCollapsed] = useState<boolean>(() => {
     return window.localStorage.getItem('horizon-accent-collapsed') !== 'false'
   })
@@ -98,6 +104,7 @@ function App() {
   const [serviceStatus, setServiceStatus] = useState('Checking…')
   const [libraryError, setLibraryError] = useState('')
   const [selected, setSelected] = useState('')
+  const [appliedWallpaperPath, setAppliedWallpaperPath] = useState<string | null>(null)
   const [applyState, setApplyState] = useState<'idle' | 'applying' | 'success' | 'error'>('idle')
   const [applyMessage, setApplyMessage] = useState('')
   const [interval, setInterval] = useState(15)
@@ -201,6 +208,36 @@ function App() {
 
     return () => {
       cancelled = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function refreshAppliedWallpaper() {
+      try {
+        const response = await fetch('/api/wallpapers/current')
+        if (!response.ok) return
+
+        const data = await response.json() as { path: string | null }
+
+        if (!cancelled) {
+          setAppliedWallpaperPath(data.path)
+        }
+      } catch {
+        // Keep the last known applied wallpaper if the request fails.
+      }
+    }
+
+    void refreshAppliedWallpaper()
+
+    const timer = window.setInterval(() => {
+      void refreshAppliedWallpaper()
+    }, 5000)
+
+    return () => {
+      cancelled = true
+      window.clearInterval(timer)
     }
   }, [])
 
@@ -309,6 +346,7 @@ function App() {
         throw new Error(data.error || data.message || 'The wallpaper could not be applied.')
       }
 
+      setAppliedWallpaperPath(currentWallpaper.filename)
       setApplyState('success')
       setApplyMessage(data.message || 'Wallpaper applied successfully.')
     } catch (error) {
@@ -433,6 +471,18 @@ function App() {
     document.documentElement.dataset.theme = isDark ? 'dark' : 'light'
   }, [isDark])
 
+  useEffect(() => {
+    document.documentElement.dataset.glass = String(glassMode)
+    window.localStorage.setItem('horizon-glass-mode', String(glassMode))
+  }, [glassMode])
+
+  useEffect(() => {
+    window.localStorage.setItem(
+      'horizon-profile-thought-open',
+      String(profileThoughtOpen),
+    )
+  }, [profileThoughtOpen])
+
   const accentColor = accentOptions.find((option) => option.id === accent)?.color
     ?? '#579BFF'
 
@@ -465,6 +515,24 @@ function App() {
       height: null,
       url: '',
     }
+
+  const desktopWallpaper = wallpapers.find(
+    (wallpaper) => wallpaper.filename === appliedWallpaperPath,
+  ) ?? {
+    id: '',
+    filename: '',
+    name: appliedWallpaperPath
+      ? 'Applied wallpaper unavailable'
+      : 'No applied wallpaper recorded',
+    category: 'DESKTOP',
+    description: appliedWallpaperPath
+      ? 'The applied image is no longer in your registered collection.'
+      : 'Choose a wallpaper and apply it to your desktop.',
+    colors: 'space',
+    width: null,
+    height: null,
+    url: '',
+  }
 
   const canvasWidth = displays.reduce(
     (rightEdge, display) => Math.max(rightEdge, display.x + display.width),
@@ -523,14 +591,32 @@ function App() {
               Live status from your local systemd service.
             </div>
           </div>
-          <div className="profile">
-            <div className="avatar">T</div>
-            <div className="profile-text">
+          <button
+            type="button"
+            className="profile profile-trigger"
+            aria-expanded={profileThoughtOpen}
+            aria-controls="profile-thought"
+            onClick={() => setProfileThoughtOpen((open) => !open)}
+          >
+            <span className="avatar" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="8" r="3.2" />
+                <path d="M5.5 20c.5-4 2.8-6 6.5-6s6 2 6.5 6" />
+              </svg>
+            </span>
+            <span className="profile-text">
               <strong>Horizon</strong>
               <span>Local workspace</span>
+            </span>
+            <span className="profile-menu" aria-hidden="true">⌄</span>
+          </button>
+          {profileThoughtOpen && (
+            <div className="profile-thought" id="profile-thought">
+              <span className="thought-spark" aria-hidden="true">✧</span>
+              <p>All is at your disposal.</p>
+              <span className="thought-caption">Make the workspace your own.</span>
             </div>
-            <span className="profile-menu">•••</span>
-          </div>
+          )}
         </div>
       </aside>
 
@@ -548,7 +634,22 @@ function App() {
             >
               {isDark ? '☼' : '☾'}
             </button>
-            <div className="top-avatar">T</div>
+            <button
+              type="button"
+              className={`icon-button glass-toggle ${glassMode ? 'enabled' : ''}`}
+              title={glassMode ? 'Disable glass mode' : 'Enable glass mode'}
+              aria-label={glassMode ? 'Disable glass mode' : 'Enable glass mode'}
+              aria-pressed={glassMode}
+              onClick={() => setGlassMode((enabled) => !enabled)}
+            >
+              ◈
+            </button>
+            <div className="top-avatar" aria-label="Horizon profile">
+              <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="8" r="3.2" />
+                <path d="M5.5 20c.5-4 2.8-6 6.5-6s6 2 6.5 6" />
+              </svg>
+            </div>
           </div>
         </header>
 
@@ -573,6 +674,7 @@ function App() {
               <div className="eyebrow"><span className="eyebrow-spark">✳</span> YOUR DESKTOP, REIMAGINED</div>
               <h1>{greeting}<span className="accent">.</span></h1>
               <p className="subtitle">A little more atmosphere for your everyday workspace.</p>
+              <p className="horizon-mantra">Every dream deserves a horizon.</p>
             </div>
             <div className="theme-picker">
               <span>APPEARANCE</span>
@@ -672,9 +774,9 @@ function App() {
             </div>
 
             <div className="preview-card">
-              <div className={`panorama ${currentWallpaper.colors} ${currentWallpaper.url ? 'has-image' : ''}`}>
-                {currentWallpaper.url ? (
-                  <img className="panorama-image" src={currentWallpaper.url} alt={currentWallpaper.name} />
+              <div className={`panorama ${desktopWallpaper.colors} ${desktopWallpaper.url ? 'has-image' : ''}`}>
+                {desktopWallpaper.url ? (
+                  <img className="panorama-image" src={desktopWallpaper.url} alt={desktopWallpaper.name} />
                 ) : (
                   <>
                     <div className="panorama-grain" />
@@ -684,9 +786,9 @@ function App() {
                   </>
                 )}
                 <div className="panorama-copy">
-                  <div className="preview-kicker">NOW SELECTED</div>
-                  <div className="preview-title">{currentWallpaper.name}</div>
-                  <div className="preview-description">{currentWallpaper.description}</div>
+                  <div className="preview-kicker">NOW APPLIED</div>
+                  <div className="preview-title">{desktopWallpaper.name}</div>
+                  <div className="preview-description">{desktopWallpaper.description}</div>
                 </div>
                 {displays.map((display) => (
                   <div
@@ -708,8 +810,8 @@ function App() {
                 <div className="preview-file">
                   <div className="file-icon">▧</div>
                   <div>
-                    <strong>{currentWallpaper.name}</strong>
-                    <span>{currentWallpaper.width && currentWallpaper.height ? `${currentWallpaper.width} × ${currentWallpaper.height}` : 'Local wallpaper'} · {displays.length} display{displays.length === 1 ? '' : 's'}</span>
+                    <strong>{desktopWallpaper.name}</strong>
+                    <span>{desktopWallpaper.width && desktopWallpaper.height ? `${desktopWallpaper.width} × ${desktopWallpaper.height}` : 'Local wallpaper'} · {displays.length} display{displays.length === 1 ? '' : 's'}</span>
                   </div>
                 </div>
                 <button

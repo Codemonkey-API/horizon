@@ -9,3 +9,6 @@ tmp/
 ui/node_modules/
 ui/dist/
 ui/.vite/
+
+# Local development history (not part of releases)
+.local-history/

@@ -545,3 +545,466 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
     max-width: 100%;
   }
 }
+
+
+/* HORIZON GLASS MODE */
+:root[data-glass='true'] .sidebar,
+:root[data-glass='true'] .topbar {
+  background: color-mix(in srgb, var(--surface) 76%, transparent);
+  -webkit-backdrop-filter: blur(24px) saturate(145%);
+  backdrop-filter: blur(24px) saturate(145%);
+}
+
+:root[data-glass='true'] .service-card,
+:root[data-glass='true'] .accent-section,
+:root[data-glass='true'] .stat-card,
+:root[data-glass='true'] .preview-card,
+:root[data-glass='true'] .rotation-card,
+:root[data-glass='true'] .wallpaper-card,
+:root[data-glass='true'] .segmented,
+:root[data-glass='true'] .rotation-folder-select {
+  background: color-mix(in srgb, var(--surface) 76%, transparent);
+  -webkit-backdrop-filter: blur(18px) saturate(135%);
+  backdrop-filter: blur(18px) saturate(135%);
+  border-color: color-mix(in srgb, var(--border-strong) 75%, transparent);
+}
+
+:root[data-glass='true'] .quick-apply-bar {
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 30%, var(--border));
+  -webkit-backdrop-filter: blur(24px) saturate(150%);
+  backdrop-filter: blur(24px) saturate(150%);
+  box-shadow: 0 8px 30px #00000012;
+}
+
+.glass-toggle.enabled {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+}
+
+.profile-area { position: relative; }
+
+.profile-trigger {
+  width: 100%;
+  border: 0;
+  color: inherit;
+  background: transparent;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  border-radius: 9px;
+  transition: background .18s ease;
+}
+
+.profile-trigger:hover,
+.profile-trigger:focus-visible {
+  background: var(--surface-hover);
+  outline: none;
+}
+
+.profile-trigger:focus-visible {
+  box-shadow: 0 0 0 2px var(--accent);
+}
+
+.avatar svg,
+.top-avatar svg {
+  width: 19px;
+  height: 19px;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.avatar,
+.top-avatar {
+  color: var(--accent);
+  background: var(--accent-soft);
+  flex-shrink: 0;
+}
+
+.top-avatar {
+  display: grid;
+  place-items: center;
+}
+
+.profile-thought {
+  position: absolute;
+  z-index: 40;
+  left: 0;
+  right: 0;
+  bottom: 54px;
+  padding: 14px;
+  border: 1px solid var(--border-strong);
+  border-radius: 12px;
+  background: var(--surface);
+  box-shadow: 0 12px 32px #00000020;
+  animation: horizon-thought-in .18s ease-out;
+}
+
+:root[data-glass='true'] .profile-thought {
+  background: color-mix(in srgb, var(--surface) 78%, transparent);
+  -webkit-backdrop-filter: blur(22px) saturate(145%);
+  backdrop-filter: blur(22px) saturate(145%);
+}
+
+.profile-thought p {
+  margin: 4px 0 6px;
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.thought-spark {
+  color: var(--accent);
+  font-size: 18px;
+}
+
+.thought-caption {
+  color: var(--muted);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.horizon-mantra {
+  margin: 8px 0 0;
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .15px;
+}
+
+@keyframes horizon-thought-in {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .profile-thought { animation: none; }
+}
+
+@supports not ((backdrop-filter: blur(1px))) {
+  :root[data-glass='true'] .sidebar,
+  :root[data-glass='true'] .topbar,
+  :root[data-glass='true'] .service-card,
+  :root[data-glass='true'] .accent-section,
+  :root[data-glass='true'] .stat-card,
+  :root[data-glass='true'] .preview-card,
+  :root[data-glass='true'] .rotation-card,
+  :root[data-glass='true'] .wallpaper-card,
+  :root[data-glass='true'] .quick-apply-bar {
+    background: var(--surface);
+  }
+}
+
+/* HORIZON FULL-WINDOW GLASS MODE */
+:root[data-glass='true'] .app-shell {
+  background: transparent !important;
+  isolation: isolate;
+}
+
+:root[data-glass='true'] .main-content,
+:root[data-glass='true'] .page-content {
+  background: transparent !important;
+}
+
+:root[data-glass='true'] .sidebar,
+:root[data-glass='true'] .topbar {
+  background: var(--glass-panel-strong) !important;
+  backdrop-filter: blur(var(--glass-blur)) saturate(155%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(155%);
+}
+
+:root[data-glass='true'] .service-card,
+:root[data-glass='true'] .accent-section,
+:root[data-glass='true'] .stat-card,
+:root[data-glass='true'] .preview-card,
+:root[data-glass='true'] .rotation-card,
+:root[data-glass='true'] .wallpaper-card,
+:root[data-glass='true'] .segmented,
+:root[data-glass='true'] .rotation-folder-select,
+:root[data-glass='true'] .quick-apply-bar {
+  background: var(--glass-panel) !important;
+  border-color: var(--glass-border);
+  backdrop-filter: blur(18px) saturate(145%);
+  -webkit-backdrop-filter: blur(18px) saturate(145%);
+}
+
+:root[data-glass='true'] .wallpaper-card:hover,
+:root[data-glass='true'] .nav-item:hover,
+:root[data-glass='true'] .profile-trigger:hover {
+  background-color: color-mix(in srgb, var(--accent) 13%, transparent);
+}
+
+:root[data-glass='true'] .nav-item.active {
+  background: color-mix(in srgb, var(--accent) 19%, transparent);
+  backdrop-filter: blur(12px);
+}
+
+:root[data-glass='true'] .icon-button,
+:root[data-glass='true'] .secondary-button,
+:root[data-glass='true'] .folder-input {
+  background-color: var(--glass-panel);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+}
+
+/* =========================================================
+   HORIZON VISUAL REFINEMENT 01
+   Visual layer only. No application behaviour changes.
+   ========================================================= */
+
+:root {
+  --horizon-radius-card: 15px;
+  --horizon-radius-control: 10px;
+  --horizon-shadow-soft: 0 8px 24px rgba(0, 0, 0, .09);
+  --horizon-shadow-float: 0 16px 38px rgba(0, 0, 0, .16);
+  --horizon-motion: 180ms cubic-bezier(.2, .7, .2, 1);
+}
+
+/* Consistent interaction language */
+button,
+.wallpaper-card,
+.service-card,
+.stat-card,
+.preview-card,
+.accent-section,
+.rotation-card,
+.folder-manager {
+  transition:
+    background-color var(--horizon-motion),
+    border-color var(--horizon-motion),
+    box-shadow var(--horizon-motion),
+    transform var(--horizon-motion);
+}
+
+/* Refined surfaces in solid mode */
+.service-card,
+.stat-card,
+.preview-card,
+.accent-section,
+.rotation-card,
+.folder-manager {
+  border-radius: var(--horizon-radius-card);
+  box-shadow: var(--horizon-shadow-soft);
+}
+
+/* Sidebar and navigation */
+.sidebar {
+  border-right-color: var(--border-strong);
+}
+
+.nav-item {
+  min-height: 41px;
+  border-radius: var(--horizon-radius-control);
+  transition:
+    color var(--horizon-motion),
+    background-color var(--horizon-motion),
+    transform var(--horizon-motion);
+}
+
+.nav-item:hover {
+  transform: translateX(2px);
+}
+
+.nav-item.active {
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* Top bar */
+.topbar {
+  position: relative;
+  z-index: 10;
+  border-bottom-color: var(--border-strong);
+}
+
+.icon-button {
+  transition:
+    color var(--horizon-motion),
+    background-color var(--horizon-motion),
+    border-color var(--horizon-motion),
+    transform var(--horizon-motion);
+}
+
+.icon-button:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--border));
+}
+
+/* Main content hierarchy */
+h1 {
+  letter-spacing: -1.7px;
+  line-height: 1.12;
+}
+
+.section-heading h2 {
+  letter-spacing: -.7px;
+}
+
+.eyebrow,
+.nav-label,
+.muted-label {
+  text-transform: uppercase;
+}
+
+/* Wallpaper preview and library cards */
+.preview-card {
+  border-radius: 16px;
+}
+
+.wallpaper-card {
+  border-radius: 13px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, .07);
+}
+
+.wallpaper-card:hover {
+  transform: translateY(-3px);
+  border-color: color-mix(in srgb, var(--accent) 55%, var(--border));
+  box-shadow: var(--horizon-shadow-float);
+}
+
+.wallpaper-card.selected {
+  box-shadow:
+    0 0 0 1px var(--accent),
+    0 8px 24px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+.wallpaper-art {
+  transition: filter var(--horizon-motion);
+}
+
+.wallpaper-card:hover .wallpaper-art {
+  filter: saturate(1.12);
+}
+
+/* Controls */
+.primary-button,
+.secondary-button,
+.text-button,
+.segmented button {
+  transition:
+    background-color var(--horizon-motion),
+    color var(--horizon-motion),
+    border-color var(--horizon-motion),
+    box-shadow var(--horizon-motion),
+    transform var(--horizon-motion),
+    filter var(--horizon-motion);
+}
+
+.primary-button,
+.secondary-button {
+  min-height: 38px;
+  border-radius: var(--horizon-radius-control);
+}
+
+.primary-button:hover {
+  box-shadow: 0 7px 20px color-mix(in srgb, var(--accent) 24%, transparent);
+}
+
+.secondary-button:hover {
+  border-color: color-mix(in srgb, var(--accent) 45%, var(--border));
+}
+
+.folder-input,
+.rotation-folder-select {
+  border-radius: var(--horizon-radius-control);
+  transition:
+    border-color var(--horizon-motion),
+    box-shadow var(--horizon-motion),
+    background-color var(--horizon-motion);
+}
+
+.folder-input:focus,
+.folder-input:focus-visible {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 17%, transparent);
+}
+
+/* Glass mode: consistent layered material across the whole UI */
+:root[data-glass='true'] .sidebar {
+  box-shadow: 8px 0 30px rgba(0, 0, 0, .08);
+}
+
+:root[data-glass='true'] .topbar {
+  box-shadow: 0 5px 24px rgba(0, 0, 0, .07);
+}
+
+:root[data-glass='true'] .service-card,
+:root[data-glass='true'] .stat-card,
+:root[data-glass='true'] .preview-card,
+:root[data-glass='true'] .accent-section,
+:root[data-glass='true'] .rotation-card,
+:root[data-glass='true'] .folder-manager {
+  background: var(--glass-panel);
+  border: 1px solid var(--glass-border);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .10);
+}
+
+:root[data-glass='true'] .folder-row,
+:root[data-glass='true'] .folder-input,
+:root[data-glass='true'] .rotation-folder-select {
+  background: color-mix(in srgb, var(--surface) 48%, transparent);
+  border-color: var(--glass-border);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+}
+
+:root[data-glass='true'] .profile-thought {
+  border-color: var(--glass-border);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, .20);
+}
+
+:root[data-glass='true'] .wallpaper-card {
+  background: var(--glass-panel);
+  border-color: var(--glass-border);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  backdrop-filter: blur(16px) saturate(140%);
+}
+
+:root[data-glass='true'] .wallpaper-card:hover {
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  box-shadow: 0 16px 38px rgba(0, 0, 0, .20);
+}
+
+:root[data-glass='true'] .quick-apply-bar {
+  box-shadow: 0 14px 38px rgba(0, 0, 0, .17);
+}
+
+/* Scrollbar polish */
+.library-section .wallpaper-grid {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--muted) 45%, transparent) transparent;
+}
+
+.library-section .wallpaper-grid::-webkit-scrollbar {
+  width: 7px;
+}
+
+.library-section .wallpaper-grid::-webkit-scrollbar-thumb {
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--muted) 40%, transparent);
+}
+
+/* Accessible keyboard focus */
+button:focus-visible,
+input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+
+/* Respect system motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}

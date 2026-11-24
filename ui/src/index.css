@@ -38,3 +38,21 @@ body { margin: 0; min-width: 320px; min-height: 100vh; }
 button, input { font: inherit; }
 button { -webkit-tap-highlight-color: transparent; }
 ::selection { background: color-mix(in srgb, var(--accent) 35%, transparent); }
+
+/* HORIZON GLOBAL GLASS FOUNDATION */
+:root[data-glass='true'],
+:root[data-glass='true'] body,
+:root[data-glass='true'] #root {
+  background: transparent !important;
+}
+
+:root[data-glass='true'] {
+  --glass-panel: color-mix(in srgb, var(--surface) 68%, transparent);
+  --glass-panel-strong: color-mix(in srgb, var(--surface) 82%, transparent);
+  --glass-border: color-mix(in srgb, var(--border-strong) 65%, transparent);
+  --glass-blur: 24px;
+}
+
+:root[data-glass='true'] body {
+  background: transparent !important;
+}

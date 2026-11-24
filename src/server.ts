@@ -10,13 +10,48 @@ import {
   writeFileSync,
 } from "node:fs";
 import { execFileSync, spawnSync } from "node:child_process";
-import { basename, dirname, extname, join, resolve } from "node:path";
+import { basename, dirname, extname, join, resolve, sep } from "node:path";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { discoverDisplays } from "./displays.js";
 
 const home = process.env.HOME ?? ".";
 const collection = join(home, ".local/share/horizon/wallpapers");
 const settingsPath = join(home, ".config/horizon/settings.json");
 const port = 4179;
+
+const serverDirectory = dirname(fileURLToPath(import.meta.url));
+const sourceMode = extname(fileURLToPath(import.meta.url)) === ".ts";
+const uiDist = resolve(
+  process.env.HORIZON_UI_DIST ?? resolve(serverDirectory, "../ui/dist"),
+);
+
+function runHorizon(
+  args: string[],
+  options: {
+    encoding: "utf8";
+    timeout: number;
+    maxBuffer: number;
+  },
+) {
+  const cliEntry = resolve(serverDirectory, sourceMode ? "cli.ts" : "cli.js");
+
+  const commandArgs = sourceMode
+    ? [
+        resolve(serverDirectory, "../node_modules/tsx/dist/cli.mjs"),
+        cliEntry,
+        ...args,
+      ]
+    : [cliEntry, ...args];
+
+  return spawnSync(process.execPath, commandArgs, {
+    ...options,
+    env: {
+      ...process.env,
+      ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: "1" } : {}),
+    },
+  });
+}
+
 
 const extensions = new Set([
   ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff",
@@ -154,6 +189,16 @@ const server = createServer(async (req, res) => {
   try {
     if (req.method === "GET" && url.pathname === "/api/wallpapers") {
       sendJson(res, 200, { wallpapers: getWallpapers() });
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/wallpapers/current") {
+      const settings = readSettings();
+      const path = settings.lastAppliedWallpaper;
+
+      sendJson(res, 200, {
+        path: typeof path === "string" && existsSync(path) ? path : null,
+      });
       return;
     }
 
@@ -411,9 +456,8 @@ const server = createServer(async (req, res) => {
         return;
       }
 
-      const result = spawnSync(
-        "npm",
-        ["run", "horizon", "--", "interval", String(minutes)],
+      const result = runHorizon(
+        ["interval", String(minutes)],
         { encoding: "utf8", timeout: 120000, maxBuffer: 1024 * 1024 },
       );
 
@@ -441,9 +485,8 @@ const server = createServer(async (req, res) => {
       )
     ) {
       const action = url.pathname.endsWith("/pause") ? "pause" : "resume";
-      const result = spawnSync(
-        "npm",
-        ["run", "horizon", "--", action],
+      const result = runHorizon(
+        [action],
         { encoding: "utf8", timeout: 30000, maxBuffer: 1024 * 1024 },
       );
 
@@ -495,9 +538,8 @@ const server = createServer(async (req, res) => {
         return;
       }
 
-      const result = spawnSync(
-        "npm",
-        ["run", "horizon", "--", "apply", path],
+      const result = runHorizon(
+        ["apply", path],
         { encoding: "utf8", timeout: 120000, maxBuffer: 4 * 1024 * 1024 },
       );
 
@@ -522,6 +564,74 @@ const server = createServer(async (req, res) => {
       return;
     }
 
+    // Serve the built React UI from ui/dist in production.
+    if (req.method === "GET" && !url.pathname.startsWith("/api/")) {
+
+      const mimeTypes: Record<string, string> = {
+        ".html": "text/html; charset=utf-8",
+        ".js": "text/javascript; charset=utf-8",
+        ".mjs": "text/javascript; charset=utf-8",
+        ".css": "text/css; charset=utf-8",
+        ".json": "application/json; charset=utf-8",
+        ".svg": "image/svg+xml",
+        ".png": "image/png",
+        ".jpg": "image/jpeg",
+        ".jpeg": "image/jpeg",
+        ".webp": "image/webp",
+        ".ico": "image/x-icon",
+        ".woff": "font/woff",
+        ".woff2": "font/woff2",
+      };
+
+      let decodedPath: string;
+      try {
+        decodedPath = decodeURIComponent(url.pathname);
+      } catch {
+        sendJson(res, 400, { error: "Invalid URL path." });
+        return;
+      }
+
+      const relativePath = decodedPath.replace(/^\/+/, "");
+      let filePath = resolve(uiDist, relativePath || "index.html");
+
+      // Never allow a URL to escape the production UI directory.
+      if (filePath !== uiDist && !filePath.startsWith(uiDist + sep)) {
+        sendJson(res, 403, { error: "Forbidden path." });
+        return;
+      }
+
+      if (existsSync(filePath) && statSync(filePath).isDirectory()) {
+        filePath = join(filePath, "index.html");
+      }
+
+      // Frontend routes fall back to index.html; missing assets do not.
+      if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+        if (extname(relativePath)) {
+          sendJson(res, 404, { error: "UI asset not found." });
+          return;
+        }
+        filePath = join(uiDist, "index.html");
+      }
+
+      if (!existsSync(filePath) || !statSync(filePath).isFile()) {
+        sendJson(res, 503, {
+          error: "Production UI not built. Run the UI build first.",
+        });
+        return;
+      }
+
+      res.writeHead(200, {
+        "Content-Type": mimeTypes[extname(filePath).toLowerCase()]
+          ?? "application/octet-stream",
+        "Cache-Control": filePath.endsWith("index.html")
+          ? "no-cache"
+          : "public, max-age=31536000, immutable",
+        "X-Content-Type-Options": "nosniff",
+      });
+      createReadStream(filePath).pipe(res);
+      return;
+    }
+
     sendJson(res, 404, { error: "Horizon API route not found." });
   } catch (error) {
     sendJson(res, 500, {
@@ -530,7 +640,43 @@ const server = createServer(async (req, res) => {
   }
 });
 
-server.listen(port, "127.0.0.1", () => {
-  console.log(`Horizon local API listening on http://127.0.0.1:${port}`);
-  console.log(`Wallpaper library: ${collection}`);
-});
+export function startServer(): Promise<void> {
+  return new Promise((resolveStart, rejectStart) => {
+    server.once("error", rejectStart);
+
+    server.listen(port, "127.0.0.1", () => {
+      server.off("error", rejectStart);
+      console.log(`Horizon local API listening on http://127.0.0.1:${port}`);
+      console.log(`Wallpaper library: ${collection}`);
+      resolveStart();
+    });
+  });
+}
+
+export function stopServer(): Promise<void> {
+  return new Promise((resolveStop, rejectStop) => {
+    if (!server.listening) {
+      resolveStop();
+      return;
+    }
+
+    server.close((error) => {
+      if (error) {
+        rejectStop(error);
+      } else {
+        resolveStop();
+      }
+    });
+  });
+}
+
+const isDirectExecution =
+  process.argv[1] !== undefined &&
+  pathToFileURL(resolve(process.argv[1])).href === import.meta.url;
+
+if (isDirectExecution) {
+  void startServer().catch((error: unknown) => {
+    console.error("Horizon API failed to start:", error);
+    process.exitCode = 1;
+  });
+}

@@ -9,14 +9,40 @@ import {
   readdirSync,
   writeFileSync,
 } from "node:fs";
-import { basename, join, resolve } from "node:path";
+import { basename, dirname, extname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { renderWallpaper } from "./render.js";
+import { applyCosmicWallpaperConfig } from "./cosmic-config.js";
 
 const home = process.env.HOME ?? ".";
 const action = process.argv[2];
 const source = process.argv[3];
 const collection = join(home, ".local/share/horizon/wallpapers");
 const settingsPath = join(home, ".config/horizon/settings.json");
+
+const cliDirectory = dirname(fileURLToPath(import.meta.url));
+const sourceMode = extname(fileURLToPath(import.meta.url)) === ".ts";
+
+function runHorizon(args: string[]) {
+  const cliEntry = resolve(cliDirectory, sourceMode ? "cli.ts" : "cli.js");
+
+  const commandArgs = sourceMode
+    ? [
+        resolve(cliDirectory, "../node_modules/tsx/dist/cli.mjs"),
+        cliEntry,
+        ...args,
+      ]
+    : [cliEntry, ...args];
+
+  return spawnSync(process.execPath, commandArgs, {
+    stdio: "inherit",
+    env: {
+      ...process.env,
+      ...(process.versions.electron ? { ELECTRON_RUN_AS_NODE: "1" } : {}),
+    },
+  });
+}
+
 
 const supportedExtensions = new Set([
   ".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tif", ".tiff",
@@ -266,11 +292,7 @@ if (action === "rotate") {
     console.log(`Source: ${wallpaper}`);
     console.log(`Available wallpapers: ${images.length}`);
 
-    const result = spawnSync(
-      "npm",
-      ["run", "horizon", "--", "apply", wallpaper],
-      { stdio: "inherit" },
-    );
+    const result = runHorizon(["apply", wallpaper]);
 
     if (result.error) {
       console.error(`Could not launch wallpaper application: ${result.error.message}`);
@@ -316,10 +338,6 @@ if (action === "render") {
 
 if (action !== "apply") usage();
 
-const config = join(
-  home,
-  ".config/cosmic/com.system76.CosmicBackground/v1",
-);
 const state = join(home, ".local/state/horizon");
 const renderDir = join(
   home,
@@ -328,86 +346,19 @@ const renderDir = join(
 );
 const backup = join(state, "backups", `apply-${timestamp()}`);
 
-if (!existsSync(config)) {
-  throw new Error(`COSMIC configuration not found: ${config}`);
-}
-
-const requiredFiles = [
-  "all",
-  "backgrounds",
-  "same-on-all",
-  "output.HDMI-A-1",
-  "output.HDMI-A-2",
-];
-
-for (const file of requiredFiles) {
-  if (!existsSync(join(config, file))) {
-    throw new Error(`Required COSMIC setting is missing: ${file}`);
-  }
-}
-
 // Render before touching live desktop settings.
 renderWallpaper(image, renderDir);
-
-mkdirSync(backup, { recursive: true });
-
-const backupConfig = join(backup, "config");
-cpSync(config, backupConfig, { recursive: true });
-
-// Verify every required setting was copied byte-for-byte.
-for (const file of requiredFiles) {
-  const original = join(config, file);
-  const saved = join(backupConfig, file);
-
-  if (
-    !existsSync(saved) ||
-    !readFileSync(original).equals(readFileSync(saved))
-  ) {
-    throw new Error(`Backup verification failed for ${file}. Nothing was applied.`);
-  }
-}
-
-console.log(`Verified configuration backup: ${backupConfig}`);
 
 const left = join(renderDir, "HDMI-A-1.png");
 const right = join(renderDir, "HDMI-A-2.png");
 
-const outputConfig = (name: string, path: string) => `(
-    output: "${name}",
-    source: Path("${path}"),
-    filter_by_theme: false,
-    rotation_frequency: 300,
-    filter_method: Lanczos,
-    scaling_mode: Stretch,
-    sampling_method: Alphanumeric,
-)
-`;
+applyCosmicWallpaperConfig({
+  home,
+  left,
+  right,
+  backupRoot: backup,
+});
 
-function writeConfig(name: string, content: string) {
-  const target = join(config, name);
-  const temporary = `${target}.horizon-tmp`;
-
-  writeFileSync(temporary, content);
-  renameSync(temporary, target);
-}
-
-try {
-  // Pause independent outputs while the new panels are configured.
-  writeConfig("same-on-all", "true\n");
-
-  writeConfig("output.HDMI-A-1", outputConfig("HDMI-A-1", left));
-  writeConfig("output.HDMI-A-2", outputConfig("HDMI-A-2", right));
-  writeConfig("backgrounds", '["HDMI-A-1", "HDMI-A-2"]\n');
-
-  // Enable the two prepared panels together as the final configuration step.
-  writeConfig("same-on-all", "false\n");
-
-  console.log("\nHorizon applied successfully 🌅");
-  console.log(`Backup: ${backup}`);
-  console.log(`Rendered panels: ${renderDir}`);
-} catch (error) {
-  console.error("Apply failed. Restoring the saved COSMIC settings.");
-
-  cpSync(backupConfig, config, { recursive: true });
-  throw error;
-}
+console.log("\nHorizon applied successfully 🌅");
+console.log(`Backup: ${join(backup, "config")}`);
+console.log(`Rendered panels: ${renderDir}`);
